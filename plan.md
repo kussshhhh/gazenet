@@ -39,4 +39,36 @@ The raw Pitch/Yaw angles need to be converted into Screen Coordinates (X, Y).
 
 ## 3. Immediate Action Items
 1.  Verify weights are downloaded.
-2.  Start Phase 1 (Calibration).
+## 4. Technical Deep Dive
+
+### How do we get Coordinates from a Vector?
+The "Vector" is just two angles: **Pitch** (up/down) and **Yaw** (left/right).
+To get Screen Coordinates $(X, Y)$, we use **Polynomial Regression**.
+
+We assume there is a mathematical relationship:
+$$ X_{screen} = A \cdot Yaw + B \cdot Pitch + C $$
+$$ Y_{screen} = D \cdot Yaw + E \cdot Pitch + F $$
+
+During **Calibration**, we collect known pairs of $(Yaw, Pitch)$ and $(X, Y)$. We then solve for the weights $A, B, C, D, E, F$ that minimize the error.
+
+### The "Same Vector" Problem
+*   **Question**: "What if two points fall on the same vector?"
+*   **Answer**: This happens if you move your head. If you shift your head 10cm to the right but keep looking at the same angle, you will be looking at a different spot on the wall (or screen).
+*   **Solution**: Our current simple model assumes your head position is relatively **stationary** (like sitting in front of a laptop). If you move your head significantly, you must **Recalibrate**.
+*   **Advanced Solution (Future)**: We would need to estimate the 3D Head Position $(X, Y, Z)$ relative to the camera and intersect the gaze ray with the screen plane. This requires camera calibration and is much more complex.
+
+### Handling Error Rates (Jitter)
+The raw output from the AI model is noisy. It "jitters" even when your eyes are still.
+*   **Solution**: We implement **Smoothing** (Exponential Moving Average).
+    $$ P_{current} = \alpha \cdot P_{raw} + (1 - \alpha) \cdot P_{previous} $$
+    *   If $\alpha$ is low (e.g., 0.1), the cursor is very smooth but laggy.
+    *   If $\alpha$ is high (e.g., 0.9), the cursor is fast but jittery.
+    *   We currently use $\alpha=0.5$ in `control.py`.
+
+### What happens after we get coordinates?
+Once we have $(X, Y)$, we have two paths:
+1.  **OS Level Control (`control.py`)**: We move the actual system mouse. This works for *everything* (Browser, Games, Desktop).
+2.  **Browser Integration**:
+    *   We can inject JavaScript to show a "Gaze Cursor" inside the web page.
+    *   We can implement **"Smart Snapping"**: If your gaze is near a button, we "snap" the cursor to the button center to make clicking easier.
+

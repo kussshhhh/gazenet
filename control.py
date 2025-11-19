@@ -12,7 +12,8 @@ from config import data_config
 from utils.helpers import get_model, pre_process
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')
-pyautogui.FAILSAFE = False
+# FAILSAFE: Dragging mouse to any corner will throw an exception and stop the script
+pyautogui.FAILSAFE = True
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Gaze Mouse Control")

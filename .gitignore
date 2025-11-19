@@ -1,0 +1,19 @@
+# Weights
+weights/
+*.pt
+*.pth
+
+# Virtual Environment
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store
+
+# Calibration data
+calibration.json
