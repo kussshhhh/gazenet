@@ -17,3 +17,4 @@ __pycache__/
 
 # Calibration data
 calibration.json
+test_mouse.py

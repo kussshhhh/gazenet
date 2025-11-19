@@ -100,6 +100,12 @@ def main(args):
     # Smoothing variables
     curr_x, curr_y = pyautogui.position()
     
+    # Dwell Click Variables
+    dwell_timer = time.time()
+    dwell_pos = None
+    DWELL_TIME = 1.0 # seconds to stare before clicking
+    DWELL_AREA = 75  # pixels radius allowed for jitter
+    
     logging.info("Starting Control Loop. Press 'q' to exit.")
     
     while True:
@@ -120,6 +126,9 @@ def main(args):
             target_x = max(0, min(screen_w, target_x))
             target_y = max(0, min(screen_h, target_y))
             
+            # DEBUG: Print coordinates
+            logging.info(f"Gaze: Pitch={pitch:.2f}, Yaw={yaw:.2f} -> Target: ({int(target_x)}, {int(target_y)})")
+
             # Smoothing
             curr_x = curr_x * args.smoothing + target_x * (1 - args.smoothing)
             curr_y = curr_y * args.smoothing + target_y * (1 - args.smoothing)
@@ -127,7 +136,44 @@ def main(args):
             # Move Mouse
             pyautogui.moveTo(curr_x, curr_y)
             
-            # Visualization (Optional)
+            # --- Dwell Click Logic ---
+            if dwell_pos is None:
+                dwell_pos = (curr_x, curr_y)
+                dwell_timer = time.time()
+            
+            # Calculate distance moved
+            dist = np.sqrt((curr_x - dwell_pos[0])**2 + (curr_y - dwell_pos[1])**2)
+            
+            if dist > DWELL_AREA:
+                # Moved too much, reset timer
+                dwell_pos = (curr_x, curr_y)
+                dwell_timer = time.time()
+            elif time.time() - dwell_timer > DWELL_TIME:
+                # Held still for DWELL_TIME seconds -> CLICK!
+                pyautogui.click()
+                logging.info("CLICK!")
+                dwell_pos = None # Reset
+                dwell_timer = time.time() + 1.0 # Cooldown
+                
+                # Visual Feedback (Green Flash)
+                cv2.circle(frame, (vis_x, vis_y), 40, (0, 255, 0), -1)
+
+            # Visualization: Draw Red Dot on Camera Feed
+            h, w, _ = frame.shape
+            vis_x = int(curr_x / screen_w * w)
+            vis_y = int(curr_y / screen_h * h)
+            
+            # Draw Red Dot
+            cv2.circle(frame, (vis_x, vis_y), 15, (0, 0, 255), -1)
+            
+            # Draw Dwell Progress (Optional Ring)
+            if dwell_pos is not None:
+                elapsed = time.time() - dwell_timer
+                if elapsed > 0:
+                    progress = min(1.0, elapsed / DWELL_TIME)
+                    radius = int(15 + (25 * progress))
+                    cv2.circle(frame, (vis_x, vis_y), radius, (0, 255, 255), 2)
+            
             cv2.putText(frame, f"Gaze: ({int(curr_x)}, {int(curr_y)})", (50, 50), 
                         cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
