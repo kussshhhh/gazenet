@@ -32,12 +32,22 @@ def parse_args():
     return args
 
 def get_gaze_vector(frame, face_detector, gaze_detector, device, idx_tensor, params):
-    bboxes, keypoints = face_detector.detect(frame)
+    # Fix for uniface return value
+    detection = face_detector.detect(frame)
+    if isinstance(detection, tuple) and len(detection) >= 2:
+        bboxes = detection[0]
+        keypoints = detection[1]
+    else:
+        bboxes = detection
+        keypoints = None
+
     if len(bboxes) == 0:
         return None, None
 
     # Take the largest face
-    bbox = max(bboxes, key=lambda b: (b[2]-b[0]) * (b[3]-b[1]))
+    largest_face = max(bboxes, key=lambda b: (b['bbox'][2]-b['bbox'][0]) * (b['bbox'][3]-b['bbox'][1]))
+    bbox = largest_face['bbox']
+    
     x_min, y_min, x_max, y_max = map(int, bbox[:4])
     h, w, _ = frame.shape
     x_min, y_min = max(0, x_min), max(0, y_min)

@@ -27,13 +27,26 @@ def parse_args():
         args.angle = dataset_config["angle"]
     return args
 
+import pyautogui
+
 def get_gaze_vector(frame, face_detector, gaze_detector, device, idx_tensor, params):
-    bboxes, keypoints = face_detector.detect(frame)
+    # Fix for uniface return value
+    detection = face_detector.detect(frame)
+    if isinstance(detection, tuple) and len(detection) >= 2:
+        bboxes = detection[0]
+        keypoints = detection[1]
+    else:
+        bboxes = detection
+        keypoints = None
+
     if len(bboxes) == 0:
         return None
 
     # Take the largest face
-    bbox = max(bboxes, key=lambda b: (b[2]-b[0]) * (b[3]-b[1]))
+    # bboxes is a list of dicts: {'bbox': [x1, y1, x2, y2], ...}
+    largest_face = max(bboxes, key=lambda b: (b['bbox'][2]-b['bbox'][0]) * (b['bbox'][3]-b['bbox'][1]))
+    bbox = largest_face['bbox']
+    
     x_min, y_min, x_max, y_max = map(int, bbox[:4])
     h, w, _ = frame.shape
     x_min, y_min = max(0, x_min), max(0, y_min)
@@ -70,6 +83,10 @@ def main(args):
 
     idx_tensor = torch.arange(args.bins, device=device, dtype=torch.float32)
 
+    # Get actual screen resolution
+    screen_w, screen_h = pyautogui.size()
+    logging.info(f"Screen Resolution: {screen_w}x{screen_h}")
+
     # Setup Window
     cv2.namedWindow("Calibration", cv2.WINDOW_NORMAL)
     cv2.setWindowProperty("Calibration", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
@@ -79,33 +96,14 @@ def main(args):
         logging.error("Cannot open webcam")
         return
 
+    calibration_data = []
+
     # Calibration Points (Normalized 0-1)
     points = [
         (0.1, 0.1), (0.5, 0.1), (0.9, 0.1),
         (0.1, 0.5), (0.5, 0.5), (0.9, 0.5),
         (0.1, 0.9), (0.5, 0.9), (0.9, 0.9)
     ]
-    
-    # Get screen resolution (approximate via window size, or assume standard)
-    # For accurate mapping, we need actual screen resolution. 
-    # OpenCV doesn't give screen size easily without a window.
-    # We will assume the window is full screen and use its size.
-    # Wait for window to initialize
-    dummy = np.zeros((100, 100, 3), dtype=np.uint8)
-    cv2.imshow("Calibration", dummy)
-    cv2.waitKey(100)
-    
-    # Try to get window size
-    # Note: cv2.getWindowImageRect might return (x, y, w, h)
-    try:
-        _, _, screen_w, screen_h = cv2.getWindowImageRect("Calibration")
-    except:
-        screen_w, screen_h = 1920, 1080 # Fallback
-        logging.warning(f"Could not get window size, using fallback: {screen_w}x{screen_h}")
-
-    logging.info(f"Screen Resolution: {screen_w}x{screen_h}")
-
-    calibration_data = []
 
     for pt_idx, (px, py) in enumerate(points):
         target_x = int(px * screen_w)

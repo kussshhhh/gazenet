@@ -2,7 +2,7 @@
 
 **Gazenet** is a gaze-controlled interface for your computer. It uses deep learning (ResNet) to estimate where you are looking on the screen using just your webcam, allowing you to control the mouse cursor with your eyes.
 
-## 🚀 Setup
+## Setup
 
 We use **uv** for fast and reliable dependency management.
 
@@ -18,7 +18,7 @@ We use **uv** for fast and reliable dependency management.
 
 1.  **Clone the repository** (if you haven't already):
     ```bash
-    git clone <your-repo-url>
+    git clone https://github.com/kussshhhh/gazenet
     cd gazenet
     ```
 
@@ -59,7 +59,7 @@ sh download_weights.sh
 Before you can control the mouse, the system needs to learn how your gaze maps to your screen coordinates.
 
 ```bash
-python calibration.py
+uv run python3 calibration.py
 ```
 *   **Instructions**: A series of yellow dots will appear on the screen. Look at each dot until it turns green and the system moves to the next one.
 *   **Output**: This generates a `calibration.json` file.
@@ -68,17 +68,18 @@ python calibration.py
 Once calibrated, you can start the mouse control script.
 
 ```bash
-python control.py
+uv run python3 control.py
 ```
 *   **Controls**:
     *   **Move**: Look around to move the mouse.
     *   **Exit**: Press `q` to quit.
+    *   **🚨 EMERGENCY STOP**: Slam the mouse cursor into any of the 4 corners of the screen to kill the program instantly.
 
 ### Debugging / Visualization
 If you just want to see the gaze vector (arrow) without moving the mouse:
 
 ```bash
-python main.py
+uv run python3 main.py
 ```
 
 ## 📁 Project Structure
